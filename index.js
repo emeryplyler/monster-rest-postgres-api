@@ -151,7 +151,23 @@ app.put("/monsterfamilies/:familyId", async (req, res) => {
   }
 });
 
+app.delete("/monsterfamilies/:familyId", async (req, res) => {
+  try {
+    const { familyId } = req.params;
+    const query =
+      "DELETE FROM MonsterFamilies WHERE FamilyId = $1 RETURNING *;";
+    const { rows } = await pool.query(query, [familyId]);
 
+    if (rows.length == 0) {
+      return res.status(404).send("Couldn't find a family with that id");
+    }
+
+    res.status(200).json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Delete failed");
+  }
+});
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
