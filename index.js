@@ -128,10 +128,6 @@ app.put("/monsterfamilies/:familyId", async (req, res) => {
     const { familyId } = req.params;
     const { name, desc } = req.body;
 
-    if (!name) {
-      return res.status(400).send("Name required");
-    }
-
     const query = `
       UPDATE MonsterFamilies
       SET FamilyName = COALESCE($1, FamilyName),
@@ -183,6 +179,22 @@ app.get("/monsters", async (req, res) => {
   }
 });
 
+app.get("/monsters/:monsterId", async (req, res) => {
+  try {
+    const { monsterId } = req.params;
+    const query = `SELECT * FROM Monsters WHERE monsterId = $1;`;
+    const { rows } = await pool.query(query, [monsterId]);
+
+    if (rows.length == 0) {
+      return res.status(404).send("Monster not found in the database");
+    }
+    res.status(200).json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Get failed");
+  }
+});
+
 app.post("/monsters", async (req, res) => {
   // validate input
   const { name, desc, power, image, habitat, familyId, leg } = req.body;
@@ -203,6 +215,55 @@ app.post("/monsters", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Post failed");
+  }
+});
+
+app.put("/monsters/:monsterId", async (req, res) => {
+  try {
+    const { monsterId } = req.params;
+    const { name, desc, power, image, habitat, familyId, leg } = req.body;
+
+    const query = `
+      UPDATE Monsters
+      SET Name = COALESCE($1, Name),
+          Description = COALESCE($2, Description),
+          PowerLevel = COALESCE($3, PowerLevel),
+          ImageUrl = COALESCE($4, ImageUrl),
+          Habitat = COALESCE($5, Habitat),
+          FamilyId = COALESCE($6, FamilyId),
+          IsLegendary = COALESCE($7, IsLegendary)
+      WHERE MonsterId = $8
+      RETURNING *;
+    `;
+    const { rows } = await pool.query(query, [name, desc, power, image, habitat, familyId, leg, monsterId]);
+
+    if (rows.length == 0) {
+      return res.status(404).send("Couldn't find a monster with that id");
+    }
+    res.status(200).json(rows[0])
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Put failed");
+  }
+});
+
+app.delete("/monsters/:monsterId", async (req, res) => {
+  try {
+    const { monsterId } = req.params;
+    const query = `
+      DELETE FROM Monsters WHERE MonsterId = $1
+      RETURNING *;
+    `;
+    const { rows } = await pool.query(query, [monsterId]);
+
+    if (rows.length == 0) {
+      return res.status(404).send("Couldn't find a monster with that id");
+    }
+
+    res.status(200).json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Delete failed");
   }
 });
 
